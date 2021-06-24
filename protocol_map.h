@@ -20,7 +20,18 @@ namespace protodecode {
 class ProtocolMap {
 public:
 	void set_int(const string& name, size_t value) {
+		if (_expect.count(name) && _expect.at(name) != value) {
+			stringstream ss;
+			ss << "expectation fail. bad format: "
+			   << name << " should be " << _expect.at(name)
+			   << " but is " << value;
+			throw runtime_error(ss.str());
+		}
 		_ints[name] = value;
+	}
+
+	void set_expect(const string& name, size_t value) {
+		_expect[name] = value;
 	}
 
 	void set_str(const string& name, const string& value) {
@@ -46,8 +57,10 @@ public:
 
 protected:
 	map<string, size_t> _ints;
+	map<string, size_t> _expect;
 	map<string, string> _strs;
 	size_t _len;
+
 };
 
 }  // namespace protodecode

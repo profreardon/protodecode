@@ -35,6 +35,17 @@ public:
 			++data_pos;
 		}
 	}
+
+	virtual bool ok() {
+		assert (data_subpos < 8);
+		if (data_pos >= data.length()) return false;
+		return true;
+	}
+
+	virtual void trace() {
+		cout << "protcol state: pos="
+		     << data_pos << " subpos=" << data_subpos << endl;
+	}
 };
 
 }  // namespace protodecode
