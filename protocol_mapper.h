@@ -336,6 +336,14 @@ protected:
 			}
 		}
 
+		virtual void set_scheme(list<string>* tokens) {
+			while (tokens->size()) {
+				Operator *op = create_operator(&tokens);
+				if (!op) break;
+				_operators.emplace_back(op);
+			}
+		}
+
 	protected:
 		vector<unique_ptr<Operator>> _operators;
 	};
@@ -392,10 +400,8 @@ public:
 
 	virtual bool set_scheme(const string& scheme) {
 		list<string> tokens = tokenize(scheme);
-		while (tokens.size()) {
-			_operators.emplace_back(create_operator(&tokens));
-		}
-		return true;
+		_operator_seq.set_scheme(&tokens);
+				return true;
 	}
 
 	virtual ProtocolMap process(const string& data) {
@@ -405,9 +411,7 @@ public:
 
 	virtual ProtocolMap process(ProtocolState* state) {
 		ProtocolMap ret;
-		for (auto &x : _operators) {
-			x->process(&ret, state);
-		}
+		_operator_seq.process(&ret, state);
 		return ret;
 	}
 
@@ -704,7 +708,7 @@ protected:
 		return tokens;
 	}
 
-	vector<unique_ptr<Operator>> _operators;
+	OperatorSequence _operator_seq;
 };
 
 }  // namespace protodecode
