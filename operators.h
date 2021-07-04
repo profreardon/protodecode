@@ -455,6 +455,51 @@ protected:
 	string _prefix;
 };
 
+class ForOperator : public Operator {
+public:
+	ForOperator(list<string>* tokens) {
+		establish(tokens);
+	}
+
+	virtual void establish(list<string>* tokens) override {
+		assert(tokens && tokens->size());
+		try {
+			_immediate = stoi(tokens->front(), nullptr, 0);
+		} catch (const std::invalid_argument& ia) {
+			_key = tokens->front();
+		}
+		tokens->pop_front();
+		assert(tokens->size());
+		_prefix = tokens->front();
+		tokens->pop_front();
+		assert(tokens->size());
+		_condition.reset(create_operator(tokens));
+	}
+
+	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
+		if (!_key.empty()) {
+			_immediate = pmap->get_int(_key);
+		}
+		size_t end = state->data_pos + _immediate;
+		size_t i = 0;
+		while (state->data_pos < end) {
+			ProtocolMap submap;
+			_condition->process(&submap, state);
+			stringstream ss;
+			ss << _prefix << "_" << i;
+			pmap->merge(ss.str(), submap);
+			++i;
+		}
+	}
+
+protected:
+	unique_ptr<Operator> _condition;
+	string _key;
+	string _prefix;
+	size_t _immediate;
+
+};
+
 class ConditionOperator : public Operator {
 public:
 	ConditionOperator(const string& type, list<string>* tokens) {

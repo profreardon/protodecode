@@ -90,7 +90,10 @@ protected:
 	static list<string> tokenize(const string& s) {
 		list<string> tokens;
 		stringstream ss;
-		ss << s;
+		for (const char &c : s) {
+			if (c == '{' || c == '}') ss << " " << c << " ";
+			else ss << c;
+		}
 		while (ss.good()) {
 			string token;
 			ss >> token;
