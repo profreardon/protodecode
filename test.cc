@@ -1,4 +1,4 @@
-#include "protocol_mapper.h"
+#include "protocol_library.h"
 
 #include <string>
 
@@ -7,8 +7,10 @@ using namespace protodecode;
 
 int main(int argc, char** argv) {
 	if (argc == 3) {
-		ProtocolMapper pm(argv[1]);
+		ProtocolLibrary::_("example");
+		Operator* op = ProtocolLibrary::load_file(argv[1]);
 		ifstream fin(argv[2]);
+
 		string data;
 		if (fin.good()) {
 			stringstream ss;
@@ -17,16 +19,20 @@ int main(int argc, char** argv) {
 			data = ss.str();
 		}
 		ProtocolState state(data);
-		ProtocolMap pmap = pm.process(&state);
+		ProtocolMap pmap;
+		op->process(&pmap, &state);
 		pmap.trace();
 	} else {
-		ProtocolMapper pm;
-		pm.set_scheme("u8 first u16 second mul 2 first blah");
-		string hex = "012";
-		ProtocolMap pmap;
-		ProtocolState state(hex);
-		pmap = pm.process(&state);
-		pmap.trace();
+		try {
+			Operator* op = ProtocolLibrary::parse("u8 first u16 second mul 2 first blah");
+			string hex = "012";
+			ProtocolMap pmap;
+			ProtocolState state(hex);
+			op->process(&pmap, &state);
+			pmap.trace();
+		} catch (char const* c) {
+			cerr << "error: " << c << endl;
+		}
 	}
 }
 

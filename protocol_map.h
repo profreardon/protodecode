@@ -55,6 +55,15 @@ public:
 		}
 	}
 
+	void merge(const string& prefix, const ProtocolMap& pmap) {
+		for (const auto &x : pmap._ints) {
+			_ints[prefix + "_" + x.first] = x.second;
+		}
+		for (const auto &x : pmap._strs) {
+			_strs[prefix + "_" + x.first] = x.second;
+		}
+	}
+
 protected:
 	map<string, size_t> _ints;
 	map<string, size_t> _expect;

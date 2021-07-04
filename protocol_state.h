@@ -38,7 +38,7 @@ public:
 
 	virtual bool ok() {
 		assert (data_subpos < 8);
-		if (data_pos >= data.length()) return false;
+		if (data_pos > data.length()) return false;
 		return true;
 	}
 

@@ -21,7 +21,7 @@ using namespace std;
 
 namespace protodecode {
 
-// TODO: have these bridge packetline
+// TODO: have <u8 these bridge packetline
 
 /* TODO: support construct:
 u16 somelength
@@ -37,12 +37,10 @@ for somelen
 // this will need to disambiguate the extensions into an array
 
 // TODO: warn on namespace clang
-// TODO: allow 0xff for expect values
-// TODO: allow _ for ignore
 // TODO: allow comments in pmap file
 // TODO: embedable subheaders
+// TODO: lmask, rmask
 
-/* TODO: create static map to keep protocols referenced by name */
 class ProtocolMapper {
 public:
 	ProtocolMapper() {

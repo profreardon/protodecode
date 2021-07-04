@@ -36,6 +36,7 @@ class U8Operator;
 class U16Operator;
 class U32Operator;
 class U64Operator;
+class ProtocolLibrary;
 
 class Operator {
 public:
@@ -88,7 +89,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		size_t value = stoi(tokens->front(), nullptr, 0);
+		_value = stoi(tokens->front(), nullptr, 0);
 		tokens->pop_front();
 		assert(tokens->size() > 2);
 		_name = *(++(tokens->begin()));
@@ -115,6 +116,11 @@ public:
 
 	void process(ProtocolMap* pm, ProtocolState* state) override {
 		size_t remaining = _bytes;
+		/* if aligned to 0, means rewind the frame to start */
+		if (!remaining) {
+			state->data_subpos = 0;
+			return;
+		}
 		if (state->data_subpos) {
 			state->data_subpos = 0;
 			++(state->data_pos);
@@ -191,6 +197,24 @@ public:
 		if (_type == "add") val += _immediate;
 		if (_type == "sub") val -= _immediate;
 		if (_type == "lsh") val <<= _immediate;
+		if (_type == "rsh") val >>= _immediate;
+		if (_type == "rmask") {
+			size_t mask = 0;
+			for (size_t i = 0; i < _immediate; ++i) {
+				mask <<= 1;
+				mask += 1;
+			}
+			val &= mask;
+		}
+		if (_type == "lmask") {
+			size_t mask = 0;
+			for (size_t i = 0; i < _immediate; ++i) {
+				mask <<= 1;
+				mask += 1;
+			}
+			mask = ~mask;
+			val &= mask;
+		}
 		if (_type == "rsh") val >>= _immediate;
 
 		pm->set_int(_name, val);
@@ -380,20 +404,13 @@ public:
 	}
 };
 
-// is this an operator?
-class OperatorSequence {
+class SequenceOperator : public Operator {
 public:
-	virtual void process(ProtocolMap* pmap, ProtocolState* state) {
-		for (auto &x : _operators) {
-			x->process(pmap, state);
-			state->tidy();
-			if (!state->ok()) {
-				throw "buffer overflow";
-			}
-		}
+	SequenceOperator(list<string>* tokens) {
+		establish(tokens);
 	}
 
-	virtual void set_scheme(list<string>* tokens) {
+	virtual void establish(list<string>* tokens) override {
 		while (tokens->size()) {
 			Operator *op = Operator::create_operator(tokens);
 			if (!op) break;
@@ -401,8 +418,88 @@ public:
 		}
 	}
 
+	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
+		for (auto &x : _operators) {
+			state->trace();
+			x->process(pmap, state);
+			state->tidy();
+			if (!state->ok()) {
+				throw runtime_error("buffer overflow");
+			}
+		}
+	}
+
 protected:
 	vector<unique_ptr<Operator>> _operators;
+};
+
+class CallOperator : public Operator {
+public:
+	CallOperator(list<string>* tokens) {
+		establish(tokens);
+	}
+
+	virtual void establish(list<string>* tokens) override {
+		assert(tokens && tokens->size());
+		_protocol = tokens->front();
+		tokens->pop_front();
+		assert(tokens->size());
+		_prefix = tokens->front();
+		tokens->pop_front();
+	}
+
+	virtual void process(ProtocolMap* pmap, ProtocolState* state) override;
+
+protected:
+	string _protocol;
+	string _prefix;
+};
+
+class ConditionOperator : public Operator {
+public:
+	ConditionOperator(const string& type, list<string>* tokens) {
+		_type = type;
+		establish(tokens);
+	}
+
+	virtual void establish(list<string>* tokens) override {
+		assert(tokens && tokens->size());
+		_key = tokens->front();
+		tokens->pop_front();
+		assert(tokens->size());
+		try {
+			_immediate = stoi(tokens->front(), nullptr, 0);
+		} catch (const std::invalid_argument& ia) {
+			_other_key = tokens->front();
+		}
+		tokens->pop_front();
+		assert(tokens->size());
+		_condition.reset(create_operator(tokens));
+	}
+
+	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
+		size_t val = pmap->get_int(_key);
+		if (!_other_key.empty())
+		    _immediate = pmap->get_int(_other_key);
+		bool result = false;
+		if (_type == "eq" && val == _immediate) result = true;
+		if (_type == "lt" && val < _immediate) result = true;
+		if (_type == "le" && val <= _immediate) result = true;
+		if (_type == "gt" && val > _immediate) result = true;
+		if (_type == "ge" && val >= _immediate) result = true;
+		if (_type == "ne" && val != _immediate) result = true;
+		if (result) {
+			_condition->process(pmap, state);
+		}
+	}
+
+protected:
+	string _type;
+	unique_ptr<Operator> _condition;
+	string _other_key;
+	string _key;
+	size_t _immediate;
+
 };
 
 
