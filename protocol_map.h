@@ -46,12 +46,29 @@ public:
 		return _strs[name];
 	}
 
-	void trace() {
+	void trace() const {
 		for (const auto & x: _ints) {
 			cout << x.first << " -> " << x.second << endl;
 		}
 		for (const auto & x: _strs) {
 			cout << x.first << " -> " << x.second << endl;
+		}
+	}
+
+	void trace_type() const {
+		for (const auto &x : _ints) {
+			cout << "size_t " << x.first << endl;
+		}
+		for (const auto &x : _strs) {
+			cout << "string " << x.first << endl;
+		}
+		for (const auto &x : _arrays) {
+			cout << "array " << x.first << endl;
+			x.second.trace_type();
+			cout << "end array" << endl;
+		}
+		for (const auto &x : _classes) {
+			cout << x.second << " " << x.first << endl;
 		}
 	}
 
@@ -64,12 +81,23 @@ public:
 		}
 	}
 
+	void set_class(const string& prefix, const string& name) {
+		_classes[prefix] = name;
+	}
+
+	void set_array(const string& prefix, const ProtocolMap& pmap) {
+		_arrays[prefix] = pmap;
+	}
+
 protected:
 	map<string, size_t> _ints;
 	map<string, size_t> _expect;
 	map<string, string> _strs;
 	size_t _len;
 
+	// extra fields for type scaffolding
+	map<string, string> _classes;
+	map<string, ProtocolMap> _arrays;
 };
 
 }  // namespace protodecode

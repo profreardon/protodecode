@@ -13,6 +13,7 @@ Operator* Operator::create_operator(list<string>* tokens) {
 	if (name == "}") return nullptr;
 	if (name == "call") return new CallOperator(tokens);
 	if (name == "for") return new ForOperator(tokens);
+	if (name == "while") return new WhileOperator(tokens);
 	if (name == "eq") return new ConditionOperator(name, tokens);
 	if (name == "le") return new ConditionOperator(name, tokens);
 	if (name == "ge") return new ConditionOperator(name, tokens);

@@ -3,6 +3,7 @@ common = Split("""operators.cc
 	       """)
 tools = dict()
 tools['test.cc'] = 'test'
+tools['pmap_to_class.cc'] = 'pmap_to_class'
 
 libs = Split("""
 	     """)

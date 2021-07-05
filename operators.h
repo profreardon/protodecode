@@ -19,7 +19,7 @@
 using namespace std;
 
 namespace protodecode {
-
+/*
 class ExpectOperator;
 class AlignOperator;
 class PaddingOperator;
@@ -37,7 +37,7 @@ class U16Operator;
 class U32Operator;
 class U64Operator;
 class ProtocolLibrary;
-
+*/
 class Operator {
 public:
 	Operator() {}
@@ -54,6 +54,8 @@ public:
 	virtual void process(ProtocolMap* pm, ProtocolState* state) {}
 
 	static Operator* create_operator(list<string>* tokens);
+
+	virtual void get_type(ProtocolMap* pm) {}
 
 protected:
 	// move the ux to here too, and make into one class
@@ -98,6 +100,7 @@ public:
 	void process(ProtocolMap* pm, ProtocolState* state) override {
 		pm->set_expect(_name, _value);
 	}
+
 protected:
 	size_t _value;
 };
@@ -220,6 +223,10 @@ public:
 		pm->set_int(_name, val);
 	}
 
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 0);
+	}
+
 protected:
 	string _type;
 	size_t _immediate;
@@ -253,6 +260,10 @@ public:
 			state->data_pos, _len));
 		pm->set_str(_name, value);
 		state->data_pos += _len;
+	}
+
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_str(_name, "");
 	}
 
 protected:
@@ -296,7 +307,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_ref = stoi(tokens->front(), nullptr, 0);
+		_ref = tokens->front();
 		tokens->pop_front();
 		Operator::establish(tokens);
 	}
@@ -322,19 +333,26 @@ public:
 		state->data_subpos += 1;
 		pm->set_int(_name, value);
 	}
+
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 1);
+	}
 };
 
 class U2Operator : public Operator {
 public:
 	U2Operator(list<string>* tokens) : Operator(tokens) {}
 
-	void process(ProtocolMap* pm, ProtocolState* state) {
+	void process(ProtocolMap* pm, ProtocolState* state) override {
 		int mask = 3;
 		mask <<= (6 - state->data_subpos);
 		size_t value = state->data[state->data_pos] & mask;
 		value >>= (6 - state->data_subpos);
 		state->data_subpos += 2;
 		pm->set_int(_name, value);
+	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 2);
 	}
 };
 
@@ -350,6 +368,9 @@ public:
 		state->data_subpos += 4;
 		pm->set_int(_name, value);
 	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 4);
+	}
 };
 
 class U8Operator : public Operator {
@@ -361,6 +382,9 @@ public:
 			state->data.c_str() + state->data_pos);
 		++(state->data_pos);
 		pm->set_int(_name, value);
+	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 8);
 	}
 };
 
@@ -375,6 +399,9 @@ public:
 		value = ntohs(value);
 		pm->set_int(_name, value);
 	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 16);
+	}
 };
 
 class U32Operator : public Operator {
@@ -387,6 +414,9 @@ public:
 		state->data_pos += 4;
 		value = ntohl(value);
 		pm->set_int(_name, value);
+	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 32);
 	}
 };
 
@@ -401,6 +431,9 @@ public:
 		state->data_pos += 8;
 		value = ntohs(value);
 		pm->set_int(_name, value);
+	}
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_name, 64);
 	}
 };
 
@@ -429,6 +462,12 @@ public:
 		}
 	}
 
+	virtual void get_type(ProtocolMap* pm) override {
+		for (auto &x : _operators) {
+			x->get_type(pm);
+		}
+	}
+
 protected:
 	vector<unique_ptr<Operator>> _operators;
 };
@@ -450,9 +489,53 @@ public:
 
 	virtual void process(ProtocolMap* pmap, ProtocolState* state) override;
 
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_class(_prefix, _protocol);
+	}
+
+
 protected:
 	string _protocol;
 	string _prefix;
+};
+
+class WhileOperator : public Operator {
+public:
+	WhileOperator(list<string>* tokens) {
+		establish(tokens);
+	}
+
+	virtual void establish(list<string>* tokens) override {
+		assert(tokens && tokens->size());
+		_prefix = tokens->front();
+		tokens->pop_front();
+		_condition.reset(create_operator(tokens));
+	}
+
+	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
+		size_t i = 0;
+		while (state->ok()) {
+			ProtocolMap submap;
+			_condition->process(&submap, state);
+			stringstream ss;
+			ss << _prefix << "_" << i;
+			pmap->merge(ss.str(), submap);
+			++i;
+		}
+	}
+
+	void get_type(ProtocolMap* pmap) override {
+		ProtocolMap submap;
+		_condition->get_type(&submap);
+		pmap->set_array(_prefix, submap);
+	}
+
+protected:
+	unique_ptr<Operator> _condition;
+	string _key;
+	string _prefix;
+	size_t _immediate;
+
 };
 
 class ForOperator : public Operator {
@@ -490,6 +573,12 @@ public:
 			pmap->merge(ss.str(), submap);
 			++i;
 		}
+	}
+
+	void get_type(ProtocolMap* pmap) override {
+		ProtocolMap submap;
+		_condition->get_type(&submap);
+		pmap->set_array(_prefix, submap);
 	}
 
 protected:
@@ -536,6 +625,10 @@ public:
 		if (result) {
 			_condition->process(pmap, state);
 		}
+	}
+
+	void get_type(ProtocolMap* pmap) override {
+		_condition->get_type(pmap);
 	}
 
 protected:
