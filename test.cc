@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "pmaps/tcp_header.pmap.h"
 using namespace std;
 using namespace protodecode;
 

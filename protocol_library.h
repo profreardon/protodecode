@@ -85,6 +85,16 @@ public:
 		return new SequenceOperator(&tokens);
 	}
 
+	static string protocol_name(const string& file) {
+		size_t start = file.find_last_of('/');
+		// string::npos is -1, so this is not really needed.
+		if (start == string::npos) start = 0;
+		else ++start;
+		size_t end = file.find('.', start);
+		if (end == string::npos) end = file.length();
+		cout << file << " " << file.substr(start, end - start) << endl;
+		return file.substr(start, end - start);
+	}
 
 protected:
 	static list<string> tokenize(const string& s) {
