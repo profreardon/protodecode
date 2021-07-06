@@ -57,7 +57,7 @@ public:
 	}
 
 	virtual void trace() {
-		cout << "protcol state: pos="
+		cout << "protocol state: pos="
 		     << data_pos << " subpos=" << data_subpos << endl;
 	}
 };

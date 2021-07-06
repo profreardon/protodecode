@@ -68,6 +68,47 @@ public:
 		return _strs.count(name);
 	}
 
+	static string prefix_array(const string& name, size_t i) {
+		stringstream prefix_ss;
+		prefix_ss << name << "_" << i << "_";
+		return prefix_ss.str();
+	}
+
+	bool has_array(const string& name, size_t i) const {
+		string prefix = prefix_array(name, i);
+		const auto str_it = _strs.lower_bound(prefix);
+		const auto int_it = _ints.lower_bound(prefix);
+		if (str_it != _strs.end() &&
+		    str_it->first.substr(0, prefix.length()) == prefix)
+			return true;
+		if (int_it != _ints.end() &&
+		    int_it->first.substr(0, prefix.length()) == prefix)
+			return true;
+		return false;
+	}
+
+	ProtocolMap get_array(const string& name, size_t i) const {
+		ProtocolMap sub;
+		string prefix = prefix_array(name, i);
+		auto str_it = _strs.lower_bound(prefix);
+		auto int_it = _ints.lower_bound(prefix);
+		while (str_it != _strs.end()) {
+			if (str_it->first.substr(0, prefix.length()) == prefix) {
+				sub.set_str(str_it->first.substr(prefix.length()),
+					    str_it->second);
+			}
+			++str_it;
+		}
+		while (int_it != _ints.end()) {
+			if (int_it->first.substr(0, prefix.length()) == prefix) {
+				sub.set_int(int_it->first.substr(prefix.length()),
+					    int_it->second);
+			}
+			++int_it;
+		}
+		return sub;
+	}
+
 	void trace() const {
 		for (const auto & x: _ints) {
 			cout << x.first << " -> " << x.second << endl;
@@ -160,11 +201,46 @@ public:
 			   << x.first << "(pmap.get_str(\"" << x.first << "\"));"
 			   << endl;
                 }
+		for (auto& x : _arrays) {
+			tab(ss, tab_depth);
+			ss << "load_" << x.first << "_array(pmap);" << endl;
+		}
 		tab(ss, tab_depth - 1);
 		ss << "}" << endl << endl;
 
 		return ss.str();
 	}
+
+	string export_array_loaders(const string& name, size_t tab_depth) {
+		stringstream ss;
+
+		tab(ss, tab_depth);
+		ss << "void load_" << name
+		   << "_array(const ProtocolMap& pmap) {" << endl;
+		++tab_depth;
+		tab(ss, tab_depth);
+		ss << "size_t i = 0;" << endl;
+		tab(ss, tab_depth);
+		ss << "while (true) {" << endl;
+		++tab_depth;
+		tab(ss, tab_depth);
+		ss << "if (!pmap.has_array(\"" << name << "\", i)) break;" << endl;
+		tab(ss, tab_depth);
+		ss << "ProtocolMap element = pmap.get_array(\"" << name
+		   << "\", i);" << endl;
+		tab(ss, tab_depth);
+		ss << "_" + name + ".push_back(" << name << "_t(element));"
+		   << endl;
+		tab(ss, tab_depth);
+		ss << "++i;" << endl;
+		tab(ss, tab_depth - 1);
+		ss << "}" << endl;
+		tab(ss, tab_depth - 2);
+		ss << "}" << endl;
+
+		return ss.str();
+	}
+
 
 	string export_class(const string& name, size_t tab_depth) {
 		stringstream ss;
@@ -174,8 +250,9 @@ public:
 		tab(ss, tab_depth);
 		ss << "public:" << endl;
 		++tab_depth;
-		ss << export_constructor(name, tab_depth);
+		ss << export_constructor(name, tab_depth) << endl;
 		for (auto &x : _arrays) {
+			ss << export_array_loaders(x.first, tab_depth) << endl;
 			ss << x.second.export_class(x.first, tab_depth);
 		}
 		for (auto& x : _ints) {
