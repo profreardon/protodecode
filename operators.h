@@ -19,25 +19,16 @@
 using namespace std;
 
 namespace protodecode {
-/*
-class ExpectOperator;
-class AlignOperator;
-class PaddingOperator;
-class StringOperator;
-class LrstringOperator;
-class LpstringOperator;
-class MathOperator;
-class ProtocolOperator;
-class U1Operator;
-class U2Operator;
-// class U3Operator;
-class U4Operator;
-class U8Operator;
-class U16Operator;
-class U32Operator;
-class U64Operator;
-class ProtocolLibrary;
-*/
+
+/* TODO: add the following:
+   var/let : store a value
+   abort: early exist if magic fails
+   config endian off and other configs
+printerr:
+print "message with spaces"
+config debug on -- print everything
+   */
+
 class Operator {
 public:
 	Operator() {}
@@ -91,7 +82,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_value = stoi(tokens->front(), nullptr, 0);
+		_value = stoull(tokens->front(), nullptr, 0);
 		tokens->pop_front();
 		assert(tokens->size() > 2);
 		_name = *(++(tokens->begin()));
@@ -105,14 +96,30 @@ protected:
 	size_t _value;
 };
 
+class PrintOperator : public Operator {
+public:
+	PrintOperator(list<string>* tokens) : Operator(tokens) {
+	}
+
+	void process(ProtocolMap* pm, ProtocolState* state) override {
+		if (pm->can_int(_name)) {
+			cout << _name << ": " << pm->get_int(_name) << endl;
+		}
+		if (pm->can_str(_name)) {
+			cout << _name << ": " << pm->get_str(_name) << endl;
+		}
+	}
+};
+
 class AlignOperator : public Operator {
 public:
-	AlignOperator(list<string>* tokens) : Operator(tokens) {
+	AlignOperator(list<string>* tokens) {
+		establish(tokens);
 	}
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_bytes = stoi(tokens->front(), nullptr, 0);
+		_bytes = stoull(tokens->front(), nullptr, 0);
 		_bytes >>= 3;
 		tokens->pop_front();
 	}
@@ -146,7 +153,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_bytes = stoi(tokens->front(), nullptr, 0);
+		_bytes = stoull(tokens->front(), nullptr, 0);
 		tokens->pop_front();
 	}
 
@@ -170,6 +177,39 @@ protected:
 	size_t _bytes;
 };
 
+class UnaryOperator : public Operator {
+public:
+	UnaryOperator(const string& type, list<string>* tokens)
+	    : _type(type) {
+		establish(tokens);
+	}
+
+	void establish(list<string>* tokens) override {
+		assert(tokens && tokens->size());
+		_key = tokens->front();
+		tokens->pop_front();
+		assert(tokens->size());
+		_outkey = tokens->front();
+		tokens->pop_front();
+	}
+
+	void process(ProtocolMap* pm, ProtocolState* state) override {
+		size_t val = pm->get_int(_key);
+		if (_type == "htons") val = htons(val);
+		if (_type == "htonl") val = htonl(val);
+		pm->set_int(_outkey, val);
+	}
+
+	virtual void get_type(ProtocolMap* pm) override {
+		pm->set_int(_outkey, 0);
+	}
+
+ protected:
+	string _key;
+	string _outkey;
+	string _type;
+};
+
 class MathOperator : public Operator {
 public:
 	MathOperator(const string& type, list<string>* tokens) : _type(type) {
@@ -179,7 +219,7 @@ public:
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
 		try {
-			_immediate = stoi(tokens->front(), nullptr, 0);
+			_immediate = stoull(tokens->front(), nullptr, 0);
 		} catch (const std::invalid_argument& ia) {
 			_other_key = tokens->front();
 		}
@@ -243,7 +283,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_len = stoi(tokens->front(), nullptr, 0);
+		_len = stoull(tokens->front(), nullptr, 0);
 		tokens->pop_front();
 		Operator::establish(tokens);
 	}
@@ -278,7 +318,7 @@ public:
 
 	void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
-		_str_len = stoi(tokens->front(), nullptr, 0);
+		_str_len = stoull(tokens->front(), nullptr, 0);
 		tokens->pop_front();
 		if (!_str_len || _str_len > 4) {
 			stringstream ss;
@@ -514,8 +554,8 @@ public:
 
 	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
 		size_t i = 0;
-		while (state->ok()) {
-			ProtocolMap submap;
+		while (state->has_more()) {
+			ProtocolMap submap(pmap);
 			_condition->process(&submap, state);
 			stringstream ss;
 			ss << _prefix << "_" << i;
@@ -525,7 +565,7 @@ public:
 	}
 
 	void get_type(ProtocolMap* pmap) override {
-		ProtocolMap submap;
+		ProtocolMap submap(pmap);
 		_condition->get_type(&submap);
 		pmap->set_array(_prefix, submap);
 	}
@@ -547,7 +587,7 @@ public:
 	virtual void establish(list<string>* tokens) override {
 		assert(tokens && tokens->size());
 		try {
-			_immediate = stoi(tokens->front(), nullptr, 0);
+			_immediate = stoull(tokens->front(), nullptr, 0);
 		} catch (const std::invalid_argument& ia) {
 			_key = tokens->front();
 		}
@@ -566,7 +606,7 @@ public:
 		size_t end = state->data_pos + _immediate;
 		size_t i = 0;
 		while (state->data_pos < end) {
-			ProtocolMap submap;
+			ProtocolMap submap(pmap);
 			_condition->process(&submap, state);
 			stringstream ss;
 			ss << _prefix << "_" << i;
@@ -576,7 +616,7 @@ public:
 	}
 
 	void get_type(ProtocolMap* pmap) override {
-		ProtocolMap submap;
+		ProtocolMap submap(pmap);
 		_condition->get_type(&submap);
 		pmap->set_array(_prefix, submap);
 	}
@@ -602,7 +642,7 @@ public:
 		tokens->pop_front();
 		assert(tokens->size());
 		try {
-			_immediate = stoi(tokens->front(), nullptr, 0);
+			_immediate = stoull(tokens->front(), nullptr, 0);
 		} catch (const std::invalid_argument& ia) {
 			_other_key = tokens->front();
 		}

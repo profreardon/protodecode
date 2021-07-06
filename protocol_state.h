@@ -19,6 +19,14 @@ namespace protodecode {
 
 class ProtocolState {
 public:
+	ProtocolState(istream& in) {
+		data_pos = 0;
+		data_subpos = 0;
+		stringstream ss;
+		ss << in.rdbuf();
+		data = ss.str();
+	}
+
 	ProtocolState(const string& init_data) {
 		data = init_data;
 		data_pos = 0;
@@ -34,6 +42,12 @@ public:
 			data_subpos = 0;
 			++data_pos;
 		}
+	}
+
+	virtual bool has_more() {
+		assert (data_subpos < 8);
+		if (data_pos >= data.length()) return false;
+		return true;
 	}
 
 	virtual bool ok() {

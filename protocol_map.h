@@ -19,6 +19,8 @@ namespace protodecode {
 
 class ProtocolMap {
 public:
+	ProtocolMap() : _parent(nullptr) {}
+	ProtocolMap(ProtocolMap* parent) : _parent(parent) {}
 	void set_int(const string& name, size_t value) {
 		if (_expect.count(name) && _expect.at(name) != value) {
 			stringstream ss;
@@ -39,11 +41,23 @@ public:
 	}
 
 	size_t get_int(const string& name) const {
+		if (_parent && !has_int(name)) return _parent->get_int(name);
+		if (!has_int(name)) throw runtime_error("no key: " + name);
 		return _ints.at(name);
 	}
 
 	string get_str(const string& name) const {
+		if (_parent && !has_str(name)) return _parent->get_str(name);
+		if (!has_str(name)) throw runtime_error("no key: " + name);
 		return _strs.at(name);
+	}
+
+	bool can_int(const string& name) const {
+		return (_parent && _parent->has_int(name)) || _ints.count(name);
+	}
+
+	bool can_str(const string& name) const {
+		return (_parent && _parent->has_str(name)) || _strs.count(name);
 	}
 
 	bool has_int(const string& name) const {
@@ -102,12 +116,15 @@ public:
 		ss << "#ifndef __PROTODECODE__PMAPS__" << name << "__H__" << endl;
 		ss << "#define __PROTODECODE__PMAPS__" << name << "__H__" << endl;
 		ss << endl;
+		ss << "#include <cstdint>" << endl;
+		ss << "#include <string>" << endl;
+		ss << "#include <vector>" << endl << endl;
 		ss << "using namespace std;" << endl;
 		ss << "namespace protodecode {" << endl;
 		ss << "namespace pmaps {" << endl << endl;
-		ss << export_class(name, 0);
+		ss << export_class(name, 0) << endl;
 		ss << "}  // namespace pmaps" << endl;
-		ss << "}  // namespace protodecode" << endl;
+		ss << "}  // namespace protodecode" << endl << endl;
 		ss << "#endif  // __PROTODECODE__PMAPS__" << name << "__H__" << endl;
 
 		return ss.str();
@@ -158,6 +175,9 @@ public:
 		ss << "public:" << endl;
 		++tab_depth;
 		ss << export_constructor(name, tab_depth);
+		for (auto &x : _arrays) {
+			ss << x.second.export_class(x.first, tab_depth);
+		}
 		for (auto& x : _ints) {
 			tab(ss, tab_depth);
 			ss << "void set_" << x.first << "(size_t val) {" << endl;
@@ -204,8 +224,16 @@ public:
 			ss << "bool has_" << x.first << "() const { return _init_"
 			   << x.first << "; }" << endl;
 		}
-		// strings
-		// etal
+		for (auto& x : _arrays) {
+			tab(ss, tab_depth);
+			ss << "void add_" << x.first << "(const " << x.first
+			   << "_t& val) { _" << x.first
+			   << ".emplace_back(val); }" << endl;
+			tab(ss, tab_depth);
+			ss << "const vector<" << x.first << "_t>& " << x.first
+			   << "() const { return _" << x.first << "; }"
+			   << endl;
+		}
 		tab(ss, tab_depth - 1);
 		ss << "protected:" << endl;
 		for (auto& x : _ints) {
@@ -222,6 +250,11 @@ public:
 			ss << "string _" << x.first << ";" << endl;
 		}
 
+		for (auto& x : _arrays) {
+			tab(ss, tab_depth);
+			ss << "vector<" << x.first << "_t> _" << x.first << ";" << endl;
+		}
+
 		tab(ss, tab_depth - 1);
 		ss << "};" << endl;
 		return ss.str();
@@ -234,6 +267,8 @@ protected:
 		}
 		return;
 	}
+
+	ProtocolMap* _parent;
 
 	map<string, size_t> _ints;
 	map<string, size_t> _expect;
