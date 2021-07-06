@@ -160,8 +160,11 @@ public:
 		ss << "#include <cstdint>" << endl;
 		ss << "#include <string>" << endl;
 		ss << "#include <vector>" << endl << endl;
+		ss << "#include \"../protocol_library.h\"" << endl;
+		ss << "#include \"../protocol_map.h\"" << endl;
 		ss << "using namespace std;" << endl;
 		ss << "namespace protodecode {" << endl;
+		ss << "class ProtocolState;" << endl;
 		ss << "namespace pmaps {" << endl << endl;
 		ss << export_class(name, 0) << endl;
 		ss << "}  // namespace pmaps" << endl;
@@ -188,25 +191,25 @@ public:
 		tab(ss, tab_depth - 1);
 		ss << "}" << endl << endl;
 		tab(ss, tab_depth - 1);
-		ss << name << "_t(const ProtocolMap& pmap) {" << endl;
-		for (auto& x : _ints) {
-                        tab(ss, tab_depth);
-			ss << "if (pmap.has_int(\"" << x.first << "\")) set_"
-			   << x.first << "(pmap.get_int(\"" << x.first << "\"));"
-			   << endl;
-                }
-                for (auto& x : _strs) {
-                        tab(ss, tab_depth);
-			ss << "if (pmap.has_str(\"" << x.first << "\")) set_"
-			   << x.first << "(pmap.get_str(\"" << x.first << "\"));"
-			   << endl;
-                }
-		for (auto& x : _arrays) {
-			tab(ss, tab_depth);
-			ss << "load_" << x.first << "_array(pmap);" << endl;
-		}
+		ss << name << "_t(const ProtocolMap& pmap) { load(pmap); }" << endl;
+		tab(ss, tab_depth - 1);
+		ss << name << "_t(const string& data) {" << endl;
+		tab(ss, tab_depth);
+		ss << "_state.reset(data);" << endl;
+		tab(ss, tab_depth);
+		ss << "process(&_state);" << endl;
 		tab(ss, tab_depth - 1);
 		ss << "}" << endl << endl;
+
+		tab(ss, tab_depth - 1);
+		ss << name << "_t(ProtocolState* state) {" << endl;
+		tab(ss, tab_depth);
+		ss << "process(state);" << endl;
+		tab(ss, tab_depth - 1);
+		ss << "}" << endl << endl;
+
+		tab(ss, tab_depth - 1);
+		ss << "virtual ~" << name << "_t() {}" << endl;
 
 		return ss.str();
 	}
@@ -241,6 +244,49 @@ public:
 		return ss.str();
 	}
 
+	string export_functions(const string& name, size_t tab_depth) {
+		stringstream ss;
+
+		tab(ss, tab_depth);
+		ss << "string name() const { return \"" << name << "\"; }" << endl;
+		tab(ss, tab_depth);
+		ss << "void process(ProtocolState* state) {" << endl;
+		tab(ss, tab_depth + 1);
+		ss << "Operator* op = ProtocolLibrary::_()->get(name());" << endl;
+		tab(ss, tab_depth + 1);
+		ss << "ProtocolMap pmap;" << endl;
+		tab(ss, tab_depth + 1);
+		ss << "op->process(&pmap, state);" << endl;
+		tab(ss, tab_depth + 1);
+		ss << "load(pmap);" << endl;
+		tab(ss, tab_depth);
+		ss << "}" << endl << endl;
+		tab(ss, tab_depth);
+		ss << "virtual void load(const ProtocolMap& pmap) {" << endl;
+		++tab_depth;
+		for (auto& x : _ints) {
+                        tab(ss, tab_depth);
+			ss << "if (pmap.has_int(\"" << x.first << "\")) set_"
+			   << x.first << "(pmap.get_int(\"" << x.first << "\"));"
+			   << endl;
+                }
+                for (auto& x : _strs) {
+                        tab(ss, tab_depth);
+			ss << "if (pmap.has_str(\"" << x.first << "\")) set_"
+			   << x.first << "(pmap.get_str(\"" << x.first << "\"));"
+			   << endl;
+                }
+		for (auto& x : _arrays) {
+			tab(ss, tab_depth);
+			ss << "load_" << x.first << "_array(pmap);" << endl;
+		}
+		--tab_depth;
+		tab(ss, tab_depth);
+		ss << "}" << endl;
+
+		return ss.str();
+	}
+
 
 	string export_class(const string& name, size_t tab_depth) {
 		stringstream ss;
@@ -251,6 +297,7 @@ public:
 		ss << "public:" << endl;
 		++tab_depth;
 		ss << export_constructor(name, tab_depth) << endl;
+		ss << export_functions(name, tab_depth) << endl;
 		for (auto &x : _arrays) {
 			ss << export_array_loaders(x.first, tab_depth) << endl;
 			ss << x.second.export_class(x.first, tab_depth);
@@ -331,6 +378,8 @@ public:
 			tab(ss, tab_depth);
 			ss << "vector<" << x.first << "_t> _" << x.first << ";" << endl;
 		}
+		tab(ss, tab_depth);
+		ss << "ProtocolState _state;" << endl;
 
 		tab(ss, tab_depth - 1);
 		ss << "};" << endl;

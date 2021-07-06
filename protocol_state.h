@@ -19,15 +19,18 @@ namespace protodecode {
 
 class ProtocolState {
 public:
+	ProtocolState() : data_pos(0), data_subpos(0) {}
 	ProtocolState(istream& in) {
-		data_pos = 0;
-		data_subpos = 0;
 		stringstream ss;
 		ss << in.rdbuf();
-		data = ss.str();
+		reset(ss.str());
 	}
 
 	ProtocolState(const string& init_data) {
+		reset(init_data);
+	}
+
+	virtual void reset(const string& init_data) {
 		data = init_data;
 		data_pos = 0;
 		data_subpos = 0;

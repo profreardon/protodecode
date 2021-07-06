@@ -27,6 +27,8 @@ namespace protodecode {
 printerr:
 print "message with spaces"
 config debug on -- print everything
+
+add a notion of length for a protocol map and created types
    */
 
 class Operator {
@@ -40,6 +42,12 @@ public:
 		assert(tokens && tokens->size());
 		_name = tokens->front();
 		tokens->pop_front();
+	}
+
+	virtual ProtocolMap process(ProtocolState* state) {
+		ProtocolMap ret;
+		process(&ret, state);
+		return ret;
 	}
 
 	virtual void process(ProtocolMap* pm, ProtocolState* state) {}
