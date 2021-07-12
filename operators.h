@@ -113,6 +113,34 @@ protected:
 		size_t _value;
 	};
 
+	class ConstOperator : public Operator {
+	public:
+		ConstOperator(list<string>* tokens) {
+			establish(tokens);
+                }
+
+                void establish(list<string>* tokens) override {
+                        assert(tokens && tokens->size());
+			_name = tokens->front();
+			tokens->pop_front();
+			assert(tokens->size());
+			cout << "name " << _name << " " << tokens->front() <<
+			    endl;
+			_val = stoull(tokens->front(), nullptr, 0);
+                        tokens->pop_front();
+                }
+
+		void process(ProtocolMap* pm, ProtocolState* state) override {
+			pm->set_const_int(_name, _val);
+		}
+
+		void get_type(ProtocolMap* pm) override {
+			pm->set_const_int(_name, _val);
+		}
+	protected:
+		size_t _val;
+	};
+
 	class PrintOperator : public Operator {
 	public:
 		PrintOperator(list<string>* tokens) : Operator(tokens) {
@@ -162,6 +190,35 @@ protected:
 		size_t _bytes;
 	};
 
+	class RewindOperator : public Operator {
+	public:
+		RewindOperator(list<string>* tokens) {
+			establish(tokens);
+		}
+
+		void establish(list<string>* tokens) override {
+			assert(tokens && tokens->size());
+			_bytes = stoull(tokens->front(), nullptr, 0);
+			tokens->pop_front();
+		}
+
+		void process(ProtocolMap* pm, ProtocolState* state) override {
+			assert(_bytes);
+			if (_bytes > state->data_pos) {
+				stringstream ss;
+				ss << "not enough packet for rewinding "
+				   << _bytes << " len is " << state->data.length()
+				   << " at pos " << state->data_pos;
+				throw runtime_error(ss.str());
+			}
+
+			state->data_subpos = 0;
+			state->data_pos -= _bytes;
+		}
+	protected:
+		size_t _bytes;
+	};
+
 	class PaddingOperator : public Operator {
 	public:
 		PaddingOperator(list<string>* tokens) {
@@ -175,20 +232,16 @@ protected:
 		}
 
 		void process(ProtocolMap* pm, ProtocolState* state) override {
-			size_t remaining = _bytes;
-			assert(remaining);
-			if (remaining > state->data.length() - state->data_pos) {
+			if (_bytes > state->data.length() - state->data_pos) {
 				stringstream ss;
-				ss << "not enough packet for buffer "
+				ss << "not enough packet for padding "
 				   << _bytes << " len is " << state->data.length()
 				   << " at pos " << state->data_pos;
+				throw ss.str();
 			}
 
 			state->data_subpos = 0;
-			while (remaining) {
-				++(state->data_pos);
-				--remaining;
-			}
+			state->data_pos += _bytes;
 		}
 	protected:
 		size_t _bytes;
@@ -575,15 +628,16 @@ protected:
 				}
 			}
 		}
-	virtual void get_type(ProtocolMap* pm) override {
-		for (auto &x : _operators) {
-			x->get_type(pm);
+		virtual void get_type(ProtocolMap* pm) override {
+			for (auto &x : _operators) {
+				x->get_type(pm);
+			}
 		}
-	}
 
-protected:
-	vector<unique_ptr<Operator>> _operators;
-};
+	protected:
+		vector<unique_ptr<Operator>> _operators;
+	};
+
 
 class CallOperator : public Operator {
 public:

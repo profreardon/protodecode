@@ -21,6 +21,11 @@ class ProtocolMap {
 public:
 	ProtocolMap() : _parent(nullptr) {}
 	ProtocolMap(ProtocolMap* parent) : _parent(parent) {}
+
+	void set_const_int(const string& name, size_t value) {
+		_const_ints[name] = value;
+	}
+
 	void set_int(const string& name, size_t value) {
 		if (_expect.count(name) && _expect.at(name) != value) {
 			stringstream ss;
@@ -304,6 +309,11 @@ public:
 			ss << export_array_loaders(x.first, tab_depth) << endl;
 			ss << x.second.export_class(x.first, tab_depth);
 		}
+		for (auto& x : _const_ints) {
+			tab(ss, tab_depth);
+			ss << "static const size_t " << x.first << " = "
+			   << x.second << ";" << endl;
+		}
 		for (auto& x : _ints) {
 			tab(ss, tab_depth);
 			ss << "void set_" << x.first << "(size_t val) {" << endl;
@@ -398,6 +408,7 @@ protected:
 
 	ProtocolMap* _parent;
 
+	map<string, size_t> _const_ints;
 	map<string, size_t> _ints;
 	map<string, size_t> _expect;
 	map<string, string> _strs;

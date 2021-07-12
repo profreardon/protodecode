@@ -7,10 +7,10 @@ Operator* Operator::create_operator(list<string>* tokens) {
 	assert(tokens && tokens->size());
 	string name = tokens->front();
 	tokens->pop_front();
-	cout << "create operator " << name << endl;
 
 	if (name == "{") return new SequenceOperator(tokens);
 	if (name == "}") return nullptr;
+	if (name == "const") return new ConstOperator(tokens);
 	if (name == "print") return new PrintOperator(tokens);
 	if (name == "call") return new CallOperator(tokens);
 	if (name == "for") return new ForOperator(tokens);

@@ -100,10 +100,28 @@ protected:
 	static list<string> tokenize(const string& s) {
 		list<string> tokens;
 		stringstream ss;
-		for (const char &c : s) {
-			if (c == '{' || c == '}') ss << " " << c << " ";
-			else ss << c;
+
+		bool c_comment = false;
+		bool cpp_comment = false;
+		for (size_t i = 0; i < s.length(); ++i) {
+			if (cpp_comment && s[i] == '\n') cpp_comment = false;
+			if (i + 1 < s.length()) {
+				if (c_comment && s[i] == '*' && s[i + 1] == '/') {
+					c_comment = false;
+					i += 2;
+				}
+				if (s[i] == '/' && s[i + 1] == '/')
+					cpp_comment = true;
+				if (s[i] == '/' && s[i + 1] == '*')
+					c_comment = true;
+			}
+			if (!c_comment && !cpp_comment) {
+				if (s[i] == '{' || s[i] == '}') ss << " " <<
+					s[i] << " ";
+				else ss << s[i];
+			}
 		}
+		cout << "after: " << ss.str() << endl;
 		while (ss.good()) {
 			string token;
 			ss >> token;
