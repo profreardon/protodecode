@@ -36,9 +36,54 @@ public:
 		data_subpos = 0;
 	}
 
+	virtual void prepare() {
+		assert(!data_subpos);
+		data_startoff = data_pos;
+	}
+
+	virtual size_t peek_int() const {
+		size_t ret = *reinterpret_cast<const uint32_t*>(data.c_str() + data_pos);
+		ret = ntohl(ret);
+		return ret;
+	}
+
+	virtual size_t read_int() {
+		size_t ret = peek_int();
+		data_pos += 4;
+		return ret;
+	}
+
+	virtual size_t peek_short() const {
+		size_t ret = *reinterpret_cast<const uint16_t*>(data.c_str() + data_pos);
+		ret = ntohs(ret);
+		return ret;
+	}
+
+	virtual size_t read_short() {
+		size_t ret = peek_short();
+		data_pos += 2;
+		return ret;
+	}
+
+	virtual size_t peek_byte() const {
+		return *reinterpret_cast<const uint8_t*>(data.c_str() + data_pos);
+	}
+
+	virtual size_t read_byte() {
+		size_t ret = peek_byte();
+		++data_pos;
+		return ret;
+	}
+
+	virtual size_t relative_offset(size_t where) {
+		return data_startoff + where;
+	}
+
+
 	string data;
 	size_t data_pos;
 	size_t data_subpos;
+	size_t data_startoff;
 
 	virtual void tidy() {
 		if (data_subpos == 8) {

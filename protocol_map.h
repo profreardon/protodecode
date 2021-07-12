@@ -248,11 +248,13 @@ public:
 		stringstream ss;
 
 		tab(ss, tab_depth);
-		ss << "string name() const { return \"" << name << "\"; }" << endl;
+		ss << "string pmap_name() const { return \"" << name << "\"; }" << endl;
 		tab(ss, tab_depth);
 		ss << "void process(ProtocolState* state) {" << endl;
 		tab(ss, tab_depth + 1);
-		ss << "Operator* op = ProtocolLibrary::_()->get(name());" << endl;
+		ss << "state->prepare();" << endl;
+		tab(ss, tab_depth + 1);
+		ss << "Operator* op = ProtocolLibrary::_()->get(pmap_name());" << endl;
 		tab(ss, tab_depth + 1);
 		ss << "ProtocolMap pmap;" << endl;
 		tab(ss, tab_depth + 1);

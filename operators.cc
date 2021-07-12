@@ -25,6 +25,8 @@ Operator* Operator::create_operator(list<string>* tokens) {
         if (name == "align") return new AlignOperator(tokens);
         if (name == "padding") return new PaddingOperator(tokens);
 	if (name == "string") return new StringOperator(tokens);
+	if (name == "dnsstring") return new DnsstringOperator(tokens);
+	if (name == "cstring") return new CstringOperator(tokens);
 	if (name == "lrstring") return new LrstringOperator(tokens);
 	if (name == "lpstring") return new LpstringOperator(tokens);
 	if (name == "htons") return new UnaryOperator(name, tokens);

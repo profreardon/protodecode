@@ -28,8 +28,17 @@ printerr:
 print "message with spaces"
 config debug on -- print everything
 
-add a notion of length for a protocol map and created types
-   */
+ad a notion of length for a protocol map and created types
+
+have a total 20 { lpstring x }
+will auto prefix
+
+have constants, and enums
+
+rewind
+
+else
+ */
 
 class Operator {
 public:
@@ -227,13 +236,17 @@ protected:
 		void establish(list<string>* tokens) override {
 			assert(tokens && tokens->size());
 			try {
-				_immediate = stoull(tokens->front(), nullptr, 0);
+				_immediate_1 = stoull(tokens->front(), nullptr, 0);
 			} catch (const std::invalid_argument& ia) {
-				_other_key = tokens->front();
+				_key_1 = tokens->front();
 			}
 			tokens->pop_front();
 			assert(tokens->size());
-			_key = tokens->front();
+			try {
+				_immediate_2 = stoull(tokens->front(), nullptr, 0);
+			} catch (const std::invalid_argument& ia) {
+				_key_2 = tokens->front();
+			}
 			tokens->pop_front();
 			assert(tokens->size());
 			_name = tokens->front();
@@ -241,17 +254,19 @@ protected:
 		}
 
 		void process(ProtocolMap* pm, ProtocolState* state) override {
-			size_t val = pm->get_int(_key);
-			if (!_other_key.empty())
-			    _immediate = pm->get_int(_other_key);
-			if (_type == "mul") val *= _immediate;
-			if (_type == "add") val += _immediate;
-			if (_type == "sub") val -= _immediate;
-			if (_type == "lsh") val <<= _immediate;
-			if (_type == "rsh") val >>= _immediate;
+			if (!_key_1.empty())
+			    _immediate_1 = pm->get_int(_key_1);
+			if (!_key_2.empty())
+			    _immediate_2 = pm->get_int(_key_2);
+			size_t val = _immediate_1;
+			if (_type == "mul") val *= _immediate_2;
+			if (_type == "add") val += _immediate_2;
+			if (_type == "sub") val -= _immediate_2;
+			if (_type == "lsh") val <<= _immediate_2;
+			if (_type == "rsh") val >>= _immediate_2;
 			if (_type == "rmask") {
 				size_t mask = 0;
-				for (size_t i = 0; i < _immediate; ++i) {
+				for (size_t i = 0; i < _immediate_2; ++i) {
 					mask <<= 1;
 					mask += 1;
 				}
@@ -259,14 +274,14 @@ protected:
 			}
 			if (_type == "lmask") {
 				size_t mask = 0;
-				for (size_t i = 0; i < _immediate; ++i) {
+				for (size_t i = 0; i < _immediate_2; ++i) {
 					mask <<= 1;
 					mask += 1;
 				}
 				mask = ~mask;
 				val &= mask;
 			}
-			if (_type == "rsh") val >>= _immediate;
+			if (_type == "rsh") val >>= _immediate_2;
 
 			pm->set_int(_name, val);
 		}
@@ -277,9 +292,10 @@ protected:
 
 	protected:
 		string _type;
-		size_t _immediate;
-		string _key;
-		string _other_key;
+		size_t _immediate_1;
+		string _key_1;
+		size_t _immediate_2;
+		string _key_2;
 	};
 
 	class StringOperator : public Operator {
@@ -304,7 +320,7 @@ protected:
 				   << _len << " for " << _name;
 				throw logic_error(ss.str());
 			}
-			string value = string(state->data.substr(
+			string value(state->data.substr(
 				state->data_pos, _len));
 			pm->set_str(_name, value);
 			state->data_pos += _len;
@@ -316,6 +332,57 @@ protected:
 
 	protected:
 		size_t _len;
+	};
+
+	class DnsstringOperator : public StringOperator {
+	public:
+		DnsstringOperator(list<string>* tokens) {
+			establish(tokens);
+		}
+
+		void establish(list<string>* tokens) override {
+			Operator::establish(tokens);
+		}
+
+		void process(ProtocolMap* pm, ProtocolState* state) override {
+			size_t amount = state->peek_byte();
+			string value;
+			size_t pos = state->data_pos;
+			bool jumped = false;
+			if (amount >= 192) {
+				amount = state->read_short() - 0xc000;
+				pos = state->relative_offset(amount);
+				jumped = true;
+			}
+			stringstream ss;
+			while (pos < state->data.length() && state->data[pos]) {
+				size_t len = state->data[pos];
+				++pos;
+				ss << string(state->data.substr(pos, len))
+				   << ".";
+				   pos += len;
+			}
+			value = ss.str();
+			pm->set_str(_name, value.substr(0, value.length() - 1));
+			if (!jumped) state->data_pos = pos + 1;
+		}
+	};
+
+	class CstringOperator : public StringOperator {
+	public:
+		CstringOperator(list<string>* tokens) {
+			establish(tokens);
+		}
+
+		void establish(list<string>* tokens) override {
+			Operator::establish(tokens);
+		}
+
+		void process(ProtocolMap* pm, ProtocolState* state) override {
+			string value(state->data.substr(state->data_pos).c_str());
+			state->data_pos += value.length();
+			pm->set_str(_name, value);
+		}
 	};
 
 	class LpstringOperator : public StringOperator {
