@@ -9,7 +9,7 @@ tools['pcap_dns.cc'] = 'pcap_dns'
 
 libs = Split("""
 	     """)
-env = Environment(CXX="ccache clang++ -I.. -pthread", 		  CPPFLAGS="-D_FILE_OFFSET_BITS=64 -Wall -g --std=c++17", LIBS=libs, CPPPATH="..")
+env = Environment(CXX="ccache clang++ -I.. -pthread",  CPPFLAGS="-D_FILE_OFFSET_BITS=64 -Wall -O3 --std=c++17", LIBS=libs, CPPPATH="..")
 env['ENV']['TERM'] = 'xterm'
 env['ENV']['TARGET'] = 'bin/'
 

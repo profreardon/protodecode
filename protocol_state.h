@@ -54,7 +54,11 @@ public:
 	}
 
 	virtual size_t peek_short() const {
-		size_t ret = *reinterpret_cast<const uint16_t*>(data.c_str() + data_pos);
+		return peek_short(data_pos);
+	}
+
+	virtual size_t peek_short(size_t pos) const {
+		size_t ret = *reinterpret_cast<const uint16_t*>(data.c_str() + pos);
 		ret = ntohs(ret);
 		return ret;
 	}
@@ -66,7 +70,11 @@ public:
 	}
 
 	virtual size_t peek_byte() const {
-		return *reinterpret_cast<const uint8_t*>(data.c_str() + data_pos);
+		return peek_byte(data_pos);
+	}
+
+	virtual size_t peek_byte(size_t pos) const {
+		return *reinterpret_cast<const uint8_t*>(data.c_str() + pos);
 	}
 
 	virtual size_t read_byte() {

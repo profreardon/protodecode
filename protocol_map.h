@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+#include "tiny_timer.h"
+
+using namespace ib;
+
 using namespace std;
 
 namespace protodecode {
@@ -101,14 +105,14 @@ public:
 			if (str_it->first.substr(0, prefix.length()) == prefix) {
 				sub.set_str(str_it->first.substr(prefix.length()),
 					    str_it->second);
-			}
+			} else break;
 			++str_it;
 		}
 		while (int_it != _ints.end()) {
 			if (int_it->first.substr(0, prefix.length()) == prefix) {
 				sub.set_int(int_it->first.substr(prefix.length()),
 					    int_it->second);
-			}
+			} else break;
 			++int_it;
 		}
 		return sub;
@@ -157,7 +161,7 @@ public:
 		_arrays[prefix] = pmap;
 	}
 
-	string export_classfile(const string& name) {
+	string export_classfile(const string& name, const string& data) {
 		stringstream ss;
 		ss << "#ifndef __PROTODECODE__PMAPS__" << name << "__H__" << endl;
 		ss << "#define __PROTODECODE__PMAPS__" << name << "__H__" << endl;
@@ -171,7 +175,7 @@ public:
 		ss << "namespace protodecode {" << endl;
 		ss << "class ProtocolState;" << endl;
 		ss << "namespace pmaps {" << endl << endl;
-		ss << export_class(name, 0) << endl;
+		ss << export_class(name, 0, data) << endl;
 		ss << "}  // namespace pmaps" << endl;
 		ss << "}  // namespace protodecode" << endl << endl;
 		ss << "#endif  // __PROTODECODE__PMAPS__" << name << "__H__" << endl;
@@ -253,13 +257,13 @@ public:
 		stringstream ss;
 
 		tab(ss, tab_depth);
-		ss << "string pmap_name() const { return \"" << name << "\"; }" << endl;
+		ss << "static string pmap_name() { return \"" << name << "\"; }" << endl;
 		tab(ss, tab_depth);
 		ss << "void process(ProtocolState* state) {" << endl;
 		tab(ss, tab_depth + 1);
 		ss << "state->prepare();" << endl;
 		tab(ss, tab_depth + 1);
-		ss << "Operator* op = ProtocolLibrary::_()->get(pmap_name());" << endl;
+		ss << "Operator* op = ProtocolLibrary::_()->load(pmap_name(), pmap_data());" << endl;
 		tab(ss, tab_depth + 1);
 		ss << "ProtocolMap pmap;" << endl;
 		tab(ss, tab_depth + 1);
@@ -295,7 +299,9 @@ public:
 	}
 
 
-	string export_class(const string& name, size_t tab_depth) {
+	string export_class(const string& name,
+			    size_t tab_depth,
+			    const string& data) {
 		stringstream ss;
 
 		tab(ss, tab_depth);
@@ -307,7 +313,12 @@ public:
 		ss << export_functions(name, tab_depth) << endl;
 		for (auto &x : _arrays) {
 			ss << export_array_loaders(x.first, tab_depth) << endl;
-			ss << x.second.export_class(x.first, tab_depth);
+			ss << x.second.export_class(x.first, tab_depth, "");
+		}
+		if (!data.empty()) {
+			tab(ss, tab_depth);
+			ss << "static string pmap_data() { return R\"("
+			   << data << ")\"; }" << endl;
 		}
 		for (auto& x : _const_ints) {
 			tab(ss, tab_depth);

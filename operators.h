@@ -124,8 +124,6 @@ protected:
 			_name = tokens->front();
 			tokens->pop_front();
 			assert(tokens->size());
-			cout << "name " << _name << " " << tokens->front() <<
-			    endl;
 			_val = stoull(tokens->front(), nullptr, 0);
                         tokens->pop_front();
                 }
@@ -409,11 +407,21 @@ protected:
 			}
 			stringstream ss;
 			while (pos < state->data.length() && state->data[pos]) {
-				size_t len = state->data[pos];
+				size_t len = state->peek_byte(pos);
+				if (len >= 192) {
+					amount = state->peek_short(pos) - 0xc000;
+					if (!jumped) {
+						state->data_pos = pos + 2;
+						jumped = true;
+					}
+					pos = state->relative_offset(amount);
+					continue;
+				}
 				++pos;
 				ss << string(state->data.substr(pos, len))
 				   << ".";
-				   pos += len;
+				pos += len;
+
 			}
 			value = ss.str();
 			pm->set_str(_name, value.substr(0, value.length() - 1));
@@ -681,6 +689,7 @@ public:
 
 	virtual void process(ProtocolMap* pmap, ProtocolState* state) override {
 		size_t i = 0;
+		size_t pos = state->data_pos;
 		while (state->has_more()) {
 			ProtocolMap submap(pmap);
 			_condition->process(&submap, state);
@@ -688,6 +697,12 @@ public:
 			ss << _prefix << "_" << i;
 			pmap->merge(ss.str(), submap);
 			++i;
+			if (pos == state->data_pos) {
+				ss << "infinite while"
+				   << state->data_pos;
+				throw ss.str();
+			}
+			pos = state->data_pos;
 		}
 	}
 
@@ -730,15 +745,21 @@ public:
 		if (!_key.empty()) {
 			_immediate = pmap->get_int(_key);
 		}
-		size_t end = state->data_pos + _immediate;
 		size_t i = 0;
-		while (state->data_pos < end) {
+		while (state->data_pos < state->data.length() && i < _immediate) {
 			ProtocolMap submap(pmap);
 			_condition->process(&submap, state);
 			stringstream ss;
 			ss << _prefix << "_" << i;
 			pmap->merge(ss.str(), submap);
 			++i;
+		}
+		if (i != _immediate) {
+			stringstream ss;
+			ss << "processing for loop did "
+			   << i << " out of " << _immediate
+			   << " iterations.";
+			throw runtime_error(ss.str());
 		}
 	}
 

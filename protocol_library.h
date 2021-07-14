@@ -92,7 +92,6 @@ public:
 		else ++start;
 		size_t end = file.find('.', start);
 		if (end == string::npos) end = file.length();
-		cout << file << " " << file.substr(start, end - start) << endl;
 		return file.substr(start, end - start);
 	}
 
@@ -121,7 +120,6 @@ protected:
 				else ss << s[i];
 			}
 		}
-		cout << "after: " << ss.str() << endl;
 		while (ss.good()) {
 			string token;
 			ss >> token;
