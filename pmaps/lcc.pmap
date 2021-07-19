@@ -1,3 +1,4 @@
+const IPV4 0x800
 u16 packet_type
 le packet_type 4 {
 	u16 addr_type

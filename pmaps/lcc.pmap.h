@@ -51,7 +51,8 @@ public:
 		if (pmap.has_str("remaining_mac")) set_remaining_mac(pmap.get_str("remaining_mac"));
 	}
 
-	static string pmap_data() { return R"(u16 packet_type
+	static string pmap_data() { return R"(const IPV4 0x800
+u16 packet_type
 le packet_type 4 {
 	u16 addr_type
 	padding 10
@@ -63,6 +64,7 @@ gt packet_type 4 {
 	u16 protocol
 }
 )"; }
+	static const size_t IPV4 = 2048;
 	void set_addr_type(size_t val) {
 		_init_addr_type = true;
 		_addr_type = val;

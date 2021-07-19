@@ -65,6 +65,10 @@ public:
 
 	virtual void get_type(ProtocolMap* pm) {}
 
+	virtual string trace() {
+		return _name;
+	}
+
 protected:
 	// move the ux to here too, and make into one class
 	static size_t read_int(size_t len, ProtocolState* state) {
@@ -632,7 +636,8 @@ protected:
 				x->process(pmap, state);
 				state->tidy();
 				if (!state->ok()) {
-					throw runtime_error("buffer overflow");
+					throw runtime_error("buffer overflow: "
+							    + x->trace());
 				}
 			}
 		}
