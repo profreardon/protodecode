@@ -3,7 +3,7 @@
 #include <string>
 
 #include "pmaps/pcap.pmap.h"
-#include "pmaps/tcp_header.pmap.h"
+#include "pmaps/tcp.pmap.h"
 
 using namespace std;
 using namespace protodecode;

@@ -87,6 +87,12 @@ public:
 		return data_startoff + where;
 	}
 
+	virtual string remaining() {
+		size_t where = data_pos;
+		data_pos = data.length();
+		return data.substr(where);
+	}
+
 
 	string data;
 	size_t data_pos;

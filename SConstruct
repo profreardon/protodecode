@@ -6,6 +6,7 @@ tools['test.cc'] = 'test'
 tools['pmap_to_class.cc'] = 'pmap_to_class'
 tools['pcap_chello.cc'] = 'pcap_chello'
 tools['pcap_dns.cc'] = 'pcap_dns'
+tools['pcap_tcpstream.cc'] = 'pcap_tcpstream'
 
 libs = Split("""
 	     """)
