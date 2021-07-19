@@ -1,0 +1,37 @@
+u16 transaction_id
+u1 qr
+u4 op
+u1 authoritative
+u1 truncated
+u1 rd
+u1 ra
+u1 zero
+u1 answer_authenticated
+u1 non_authenticated
+u4 reply_code
+u16 num_questions
+u16 num_answers
+u16 num_authorities
+u16 num_additional
+for num_questions questions {
+	dnsstring name
+	u16 type
+	u16 dnsclass
+}
+for num_answers answers {
+	dnsstring name
+	u16 type
+	u16 dnsclass
+	u32 ttl
+	lpstring 2 ip
+}
+for num_authorities authorities {
+	dnsstring name
+	u16 type
+        u16 dnsclass
+        u32 ttl
+	dnsstring nameserver
+}
+for num_additional additional {
+}
+

@@ -1,0 +1,23 @@
+// default types for protocol
+const ICMP 1
+const TCP 6
+const UDP 17
+u4 version
+u4 ihl
+/* compute the options len */
+mul ihl 4 ihl_bytes
+sub ihl_bytes 20 options_len
+u8 dscp_ecn
+u16 tot_len
+u16 id
+u1 zero
+u1 df
+u1 mf
+align 8
+u8 fragment
+u8 ttl
+u8 protocol
+u16 checksum
+u32 src_ip
+u32 dst_ip
+lrstring options_len options

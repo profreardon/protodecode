@@ -1,0 +1,11 @@
+u16 packet_type
+le packet_type 4 {
+	u16 addr_type
+	padding 10
+	u16 protocol
+}
+gt packet_type 4 {
+	string 4 remaining_mac
+	string 6 other_mac
+	u16 protocol
+}

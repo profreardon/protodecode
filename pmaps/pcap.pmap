@@ -1,0 +1,28 @@
+u32 magic
+u16 major
+u16 minor
+u32 thiszone
+u32 sigfigs
+u32 snaplen
+u32 network
+eq magic 3569595041 {
+	htons major major
+	htons minor minor
+	htonl thiszone thiszone
+	htonl sigfigs sigfigs
+	htonl snaplen snaplen
+	htonl network network
+}
+while entry {
+	u32 sec
+	u32 usec
+	u32 incl_len
+	u32 orig_len
+	eq magic 3569595041 {
+		htonl sec sec
+		htonl usec usec
+		htonl incl_len incl_len
+		htonl orig_len orig_len
+	}
+	lrstring incl_len payload
+}

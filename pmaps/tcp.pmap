@@ -1,0 +1,23 @@
+u16 sport
+u16 dport
+u32 seqnum
+u32 acknum
+u4 offset
+mul offset 4 offset_bytes
+sub offset_bytes 20 option_len
+u1 zero
+u1 zero
+u1 zero
+u1 ns
+u1 cwr
+u1 ece
+u1 urg
+u1 ack
+u1 psh
+u1 rst
+u1 syn
+u1 fin
+u16 windowsize
+u16 checksum
+u16 urg
+lrstring option_len options
