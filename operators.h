@@ -38,6 +38,8 @@ have constants, and enums
 rewind
 
 else
+
+trace() for printing all , including in the _t
  */
 
 class Operator {
@@ -605,11 +607,15 @@ protected:
 		U64Operator(list<string>* tokens) : Operator(tokens) {}
 
 		void process(ProtocolMap* pm, ProtocolState* state) override {
-			throw logic_error("need to implement htonll");
-			size_t value = *reinterpret_cast<const uint64_t*>(
-				state->data.c_str() + state->data_pos);
+			size_t value;
+			bool endian = (htons(1) != 1);
+			for (size_t i = 0; i < 8; ++i) {
+				size_t other = i;
+				if (endian) other = 7 - i;
+				(reinterpret_cast<char*>(&value))[i] =
+				    state->data.c_str()[state->data_pos + other];
+			}
 			state->data_pos += 8;
-			value = ntohs(value);
 			pm->set_int(_name, value);
 		}
 		virtual void get_type(ProtocolMap* pm) override {

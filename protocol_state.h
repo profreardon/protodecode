@@ -83,6 +83,15 @@ public:
 		return ret;
 	}
 
+	virtual string read_string(size_t len) {
+		if (data_pos + len > data.length()) {
+			throw runtime_error("read string failed");
+		}
+		string ret = data.substr(data_pos, len);
+		data_pos += len;
+		return ret;
+	}
+
 	virtual size_t relative_offset(size_t where) {
 		return data_startoff + where;
 	}

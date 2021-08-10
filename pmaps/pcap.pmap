@@ -1,13 +1,13 @@
 u32 magic
-u16 major
-u16 minor
+u16 v_major
+u16 v_minor
 u32 thiszone
 u32 sigfigs
 u32 snaplen
 u32 network
 eq magic 3569595041 {
-	htons major major
-	htons minor minor
+	htons v_major v_major
+	htons v_minor v_minor
 	htonl thiszone thiszone
 	htonl sigfigs sigfigs
 	htonl snaplen snaplen

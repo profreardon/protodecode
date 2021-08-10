@@ -6,11 +6,8 @@
 #include <vector>
 
 #include "../protocol_library.h"
-
-#include "../tiny_timer.h"
 #include "../protocol_map.h"
 using namespace std;
-using namespace ib;
 namespace protodecode {
 class ProtocolState;
 namespace pmaps {
@@ -19,12 +16,12 @@ class pcap_t {
 public:
 	pcap_t() {
 		_init_magic = false;
-		_init_major = false;
-		_init_minor = false;
 		_init_network = false;
 		_init_sigfigs = false;
 		_init_snaplen = false;
 		_init_thiszone = false;
+		_init_v_major = false;
+		_init_v_minor = false;
 	}
 
 	pcap_t(const ProtocolMap& pmap) { load(pmap); }
@@ -50,12 +47,12 @@ public:
 
 	virtual void load(const ProtocolMap& pmap) {
 		if (pmap.has_int("magic")) set_magic(pmap.get_int("magic"));
-		if (pmap.has_int("major")) set_major(pmap.get_int("major"));
-		if (pmap.has_int("minor")) set_minor(pmap.get_int("minor"));
 		if (pmap.has_int("network")) set_network(pmap.get_int("network"));
 		if (pmap.has_int("sigfigs")) set_sigfigs(pmap.get_int("sigfigs"));
 		if (pmap.has_int("snaplen")) set_snaplen(pmap.get_int("snaplen"));
 		if (pmap.has_int("thiszone")) set_thiszone(pmap.get_int("thiszone"));
+		if (pmap.has_int("v_major")) set_v_major(pmap.get_int("v_major"));
+		if (pmap.has_int("v_minor")) set_v_minor(pmap.get_int("v_minor"));
 		load_entry_array(pmap);
 	}
 
@@ -167,15 +164,15 @@ public:
 		ProtocolState _state;
 	};
 	static string pmap_data() { return R"(u32 magic
-u16 major
-u16 minor
+u16 v_major
+u16 v_minor
 u32 thiszone
 u32 sigfigs
 u32 snaplen
 u32 network
 eq magic 3569595041 {
-	htons major major
-	htons minor minor
+	htons v_major v_major
+	htons v_minor v_minor
 	htonl thiszone thiszone
 	htonl sigfigs sigfigs
 	htonl snaplen snaplen
@@ -204,24 +201,6 @@ while entry {
 		return _magic;
 	}
 	bool has_magic() const { return _init_magic; }
-	void set_major(size_t val) {
-		_init_major = true;
-		_major = val;
-	}
-	size_t major() const {
-		if (!_init_major) throw runtime_error("major not initialized");
-		return _major;
-	}
-	bool has_major() const { return _init_major; }
-	void set_minor(size_t val) {
-		_init_minor = true;
-		_minor = val;
-	}
-	size_t minor() const {
-		if (!_init_minor) throw runtime_error("minor not initialized");
-		return _minor;
-	}
-	bool has_minor() const { return _init_minor; }
 	void set_network(size_t val) {
 		_init_network = true;
 		_network = val;
@@ -258,15 +237,29 @@ while entry {
 		return _thiszone;
 	}
 	bool has_thiszone() const { return _init_thiszone; }
+	void set_v_major(size_t val) {
+		_init_v_major = true;
+		_v_major = val;
+	}
+	size_t v_major() const {
+		if (!_init_v_major) throw runtime_error("v_major not initialized");
+		return _v_major;
+	}
+	bool has_v_major() const { return _init_v_major; }
+	void set_v_minor(size_t val) {
+		_init_v_minor = true;
+		_v_minor = val;
+	}
+	size_t v_minor() const {
+		if (!_init_v_minor) throw runtime_error("v_minor not initialized");
+		return _v_minor;
+	}
+	bool has_v_minor() const { return _init_v_minor; }
 	void add_entry(const entry_t& val) { _entry.emplace_back(val); }
 	const vector<entry_t>& entry() const { return _entry; }
 protected:
 	bool _init_magic;
 	size_t _magic;
-	bool _init_major;
-	size_t _major;
-	bool _init_minor;
-	size_t _minor;
 	bool _init_network;
 	size_t _network;
 	bool _init_sigfigs;
@@ -275,6 +268,10 @@ protected:
 	size_t _snaplen;
 	bool _init_thiszone;
 	size_t _thiszone;
+	bool _init_v_major;
+	size_t _v_major;
+	bool _init_v_minor;
+	size_t _v_minor;
 	vector<entry_t> _entry;
 	ProtocolState _state;
 };

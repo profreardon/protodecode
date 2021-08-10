@@ -14,7 +14,43 @@ using namespace std;
 using namespace protodecode;
 using namespace protodecode::pmaps;
 
-map<string, stringstream> _data;
+class TCPStream {
+public:
+	void add(size_t pos, const string& str) {
+		_strs.push_back(make_pair(pos - _isn, str));
+	}
+
+	void syn(size_t isn) {
+		_isn = isn + 1;
+	}
+
+	string str() {
+		size_t first, last;
+		bool set = false;
+		for (auto &x : _strs) {
+			if (!set) {
+				first = x.first;
+				last = x.first + x.second.length();
+				set = true;
+			}
+			if (x.first < first) first = x.first;
+			if (x.first + x.second.length() > last)
+				last = x.first + x.second.length();
+		}
+		assert(!first);
+		string ret(last - first, '\0');
+		for (auto &x : _strs) {
+			ret.replace(x.first - first, x.second.length(), x.second);
+		}
+		return ret;
+	}
+
+protected:
+	vector<pair<size_t, string>> _strs;
+	size_t _isn;
+};
+
+map<string, TCPStream> _data;
 map<string, stringstream> _lens;
 
 void process_packet(const pcap_t::entry_t & pcap) {
@@ -26,14 +62,16 @@ void process_packet(const pcap_t::entry_t & pcap) {
 		stringstream ss;
 		tcp_t tcp(&state);
 		string data = state.remaining();
-		if (data.empty()) return;
 
 		ss << tcp.sport() << "-" << tcp.dport();
-		_data[ss.str()] << data;
-		_lens[ss.str()] << data.length() << endl;
+
+		if (tcp.syn()) _data[ss.str()].syn(tcp.seqnum());
+		if (data.length()) {
+			_data[ss.str()].add(tcp.seqnum(), data);
+			_lens[ss.str()] << data.length() << endl;
+		}
 	}
 }
-
 
 int main(int argc, char** argv) {
 	ProtocolLibrary::_("pmaps");
